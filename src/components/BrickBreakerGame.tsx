@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Game constants
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 480;
-const PADDLE_WIDTH = 60;
-const PADDLE_HEIGHT = 8;
-const BALL_SIZE = 10;
+const PADDLE_WIDTH = 70;
+const PADDLE_HEIGHT = 10;
+const BALL_SIZE = 12;
 const BRICK_WIDTH = 28;
-const BRICK_HEIGHT = 16;
-const BRICK_ROWS = 8;
+const BRICK_HEIGHT = 18;
+const BRICK_ROWS = 7;
 const BRICK_COLS = 10;
 const BRICK_PADDING = 2;
 
@@ -47,44 +47,43 @@ interface GameState {
   gameStarted: boolean;
 }
 
-// Softer, less harsh colors
+// นุ่มนวลสำหรับตา
 const BRICK_CONFIGS = [
-  { color: 'bg-rose-400', points: 50 },
-  { color: 'bg-orange-400', points: 40 },
-  { color: 'bg-amber-400', points: 30 },
-  { color: 'bg-emerald-400', points: 20 },
-  { color: 'bg-sky-400', points: 15 },
-  { color: 'bg-violet-400', points: 15 },
-  { color: 'bg-pink-400', points: 10 },
-  { color: 'bg-teal-400', points: 10 }
+  { color: 'bg-gradient-to-r from-rose-300 to-rose-400', points: 50 },
+  { color: 'bg-gradient-to-r from-amber-300 to-amber-400', points: 40 },
+  { color: 'bg-gradient-to-r from-emerald-300 to-emerald-400', points: 30 },
+  { color: 'bg-gradient-to-r from-sky-300 to-sky-400', points: 25 },
+  { color: 'bg-gradient-to-r from-violet-300 to-violet-400', points: 20 },
+  { color: 'bg-gradient-to-r from-pink-300 to-pink-400', points: 15 },
+  { color: 'bg-gradient-to-r from-teal-300 to-teal-400', points: 10 }
 ];
 
 // Initialize bricks
 const initializeBricks = (): Brick[] => {
   const bricks: Brick[] = [];
   const startX = (GAME_WIDTH - (BRICK_COLS * (BRICK_WIDTH + BRICK_PADDING) - BRICK_PADDING)) / 2;
-  
+
   for (let row = 0; row < BRICK_ROWS; row++) {
     for (let col = 0; col < BRICK_COLS; col++) {
       const config = BRICK_CONFIGS[row % BRICK_CONFIGS.length];
       bricks.push({
         id: `${row}-${col}`,
         x: startX + col * (BRICK_WIDTH + BRICK_PADDING),
-        y: 40 + row * (BRICK_HEIGHT + BRICK_PADDING),
+        y: 50 + row * (BRICK_HEIGHT + BRICK_PADDING),
         destroyed: false,
         color: config.color,
         points: config.points
       });
     }
   }
-  
+
   return bricks;
 };
 
 // Initial game state
 const createInitialState = (level: number = 1): GameState => ({
-  paddle: { x: GAME_WIDTH / 2 - PADDLE_WIDTH / 2, y: GAME_HEIGHT - 30 },
-  ball: { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 50 },
+  paddle: { x: GAME_WIDTH / 2 - PADDLE_WIDTH / 2, y: GAME_HEIGHT - 40 },
+  ball: { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 60 },
   ballVelocity: { x: 0, y: 0 },
   bricks: initializeBricks(),
   score: 0,
@@ -98,21 +97,23 @@ const createInitialState = (level: number = 1): GameState => ({
 
 // Individual components
 const Paddle: React.FC<{ x: number; y: number }> = ({ x, y }) => (
-  <div
-    className="absolute bg-white shadow-md"
+  <motion.div
+    className="absolute bg-gradient-to-r from-blue-400 to-blue-500 shadow-lg"
     style={{
       left: x,
       top: y,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
-      borderRadius: '4px',
+      borderRadius: '6px',
     }}
+    whileHover={{ scale: 1.05 }}
+    transition={{ type: "spring", stiffness: 300 }}
   />
 );
 
 const Ball: React.FC<{ x: number; y: number }> = ({ x, y }) => (
-  <div
-    className="absolute bg-white shadow-md"
+  <motion.div
+    className="absolute bg-gradient-to-r from-yellow-300 to-yellow-400 shadow-lg"
     style={{
       left: x - BALL_SIZE / 2,
       top: y - BALL_SIZE / 2,
@@ -120,109 +121,154 @@ const Ball: React.FC<{ x: number; y: number }> = ({ x, y }) => (
       height: BALL_SIZE,
       borderRadius: '50%',
     }}
+    animate={{
+      scale: [1, 1.1, 1],
+      rotate: [0, 360]
+    }}
+    transition={{
+      scale: { duration: 0.5, repeat: Infinity },
+      rotate: { duration: 1, repeat: Infinity, ease: "linear" }
+    }}
   />
 );
 
 const Brick: React.FC<{ brick: Brick }> = ({ brick }) => {
   if (brick.destroyed) return null;
-  
+
   return (
     <motion.div
-      className={`absolute ${brick.color} shadow-sm`}
+      className={`absolute ${brick.color} shadow-md border border-white/20`}
       style={{
         left: brick.x,
         top: brick.y,
         width: BRICK_WIDTH,
         height: BRICK_HEIGHT,
-        borderRadius: '3px',
+        borderRadius: '4px',
       }}
       initial={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      exit={{
+        scale: 0,
+        opacity: 0,
+        rotate: 180
+      }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ scale: 1.05 }}
     />
   );
 };
 
-const GameStats: React.FC<{ 
-  score: number; 
-  lives: number; 
-  level: number; 
+const GameStats: React.FC<{
+  score: number;
+  lives: number;
+  level: number;
 }> = ({ score, lives, level }) => (
-  <div className="bg-white bg-opacity-95 backdrop-blur-sm p-4 rounded-xl shadow-lg mb-4">
-    <div className="flex justify-between items-center">
-      <div className="text-center">
-        <div className="text-2xl font-bold text-gray-800">{score}</div>
-        <div className="text-xs text-gray-600">SCORE</div>
+  <div className="bg-white/80 backdrop-blur-md p-4 rounded-2xl shadow-lg mb-4 border border-white/30">
+    <div className="grid grid-cols-3 gap-4 text-center">
+      <div>
+        <div className="text-2xl font-bold text-gray-800">{score.toLocaleString()}</div>
+        <div className="text-xs text-gray-600 font-medium">SCORE</div>
       </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-gray-800">{level}</div>
-        <div className="text-xs text-gray-600">LEVEL</div>
+      <div>
+        <div className="text-2xl font-bold text-purple-600">{level}</div>
+        <div className="text-xs text-gray-600 font-medium">LEVEL</div>
       </div>
-      <div className="text-center">
-        <div className="text-2xl font-bold text-red-500">{'❤️'.repeat(lives)}</div>
-        <div className="text-xs text-gray-600">LIVES</div>
+      <div>
+        <div className="text-2xl">{'💖'.repeat(lives)}</div>
+        <div className="text-xs text-gray-600 font-medium">LIVES</div>
       </div>
     </div>
   </div>
 );
 
 const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
-  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-20">
-    <div className="text-center p-6">
-      <div className="text-6xl mb-4">🎮</div>
-      <h1 className="text-3xl font-bold mb-4 text-gray-800">Brick Breaker</h1>
-      <p className="text-lg mb-6 text-gray-600">Break all the bricks!</p>
-      <div className="space-y-2 mb-6 text-sm text-gray-500">
-        <p>📱 Drag the paddle to move</p>
-        <p>🎯 Different colors = Different points</p>
-        <p>❤️ You have 3 lives</p>
-      </div>
-      <button
-        onClick={onStart}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-full text-lg font-bold shadow-lg transition-all transform hover:scale-105 active:scale-95"
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md flex items-center justify-center z-20">
+    <motion.div
+      className="text-center p-8 bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl max-w-xs mx-4"
+      initial={{ scale: 0.8, opacity: 0, y: 20 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.div
+        className="text-6xl mb-4"
+        animate={{ rotate: [0, 10, -10, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
       >
-        Start Game
-      </button>
-    </div>
+        🎮
+      </motion.div>
+      <h1 className="text-3xl font-bold mb-2 text-gray-800">Brick Breaker</h1>
+      <p className="text-gray-600 mb-6">เล่นสนุกกับการทำลายอิฐ!</p>
+      <div className="space-y-2 mb-6 text-sm text-gray-600">
+        <div className="flex items-center justify-center gap-2">
+          <span>📱</span>
+          <span>ลากแป้นเพื่อเล่น</span>
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <span>🎯</span>
+          <span>สีต่างกัน = คะแนนต่างกัน</span>
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <span>💖</span>
+          <span>มีชีวิต 3 ครั้ง</span>
+        </div>
+      </div>
+      <motion.button
+        onClick={onStart}
+        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-8 py-4 rounded-2xl text-lg font-bold shadow-lg transition-all"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        เริ่มเล่น
+      </motion.button>
+    </motion.div>
   </div>
 );
 
-const GameOverScreen: React.FC<{ 
-  gameWon: boolean; 
-  score: number; 
+const GameOverScreen: React.FC<{
+  gameWon: boolean;
+  score: number;
   level: number;
   onRestart: () => void;
   onNextLevel: () => void;
 }> = ({ gameWon, score, onRestart, onNextLevel }) => (
-  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-20">
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md flex items-center justify-center z-20">
     <motion.div
-      className="bg-white p-6 rounded-2xl shadow-xl text-center mx-4 max-w-sm"
+      className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl text-center mx-4 max-w-xs"
       initial={{ scale: 0.8, opacity: 0, y: 20 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.5 }}
     >
-      <div className="text-6xl mb-4">{gameWon ? '🎉' : '😢'}</div>
+      <motion.div
+        className="text-6xl mb-4"
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ duration: 0.5, repeat: 3 }}
+      >
+        {gameWon ? '🎉' : '😢'}
+      </motion.div>
       <h2 className="text-2xl font-bold mb-4 text-gray-800">
-        {gameWon ? 'Level Complete!' : 'Game Over'}
+        {gameWon ? 'ผ่านด่าน!' : 'เกมจบ'}
       </h2>
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <div className="text-2xl font-bold text-blue-600 mb-1">{score}</div>
-        <div className="text-sm text-gray-600">Final Score</div>
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-4 mb-6 border border-blue-200">
+        <div className="text-3xl font-bold text-blue-600 mb-1">{score.toLocaleString()}</div>
+        <div className="text-sm text-gray-600">คะแนนสุดท้าย</div>
       </div>
       <div className="flex gap-3 justify-center">
-        <button
+        <motion.button
           onClick={onRestart}
-          className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
+          className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-3 rounded-2xl font-medium shadow-lg transition-all"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
-          Play Again
-        </button>
+          เล่นใหม่
+        </motion.button>
         {gameWon && (
-          <button
+          <motion.button
             onClick={onNextLevel}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-2xl font-medium shadow-lg transition-all"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            Next Level
-          </button>
+            ด่านต่อไป
+          </motion.button>
         )}
       </div>
     </motion.div>
@@ -230,20 +276,22 @@ const GameOverScreen: React.FC<{
 );
 
 const PauseScreen: React.FC<{ onResume: () => void }> = ({ onResume }) => (
-  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-10">
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur-md flex items-center justify-center z-10">
     <motion.div
-      className="bg-white p-6 rounded-2xl shadow-xl text-center"
+      className="bg-white/90 backdrop-blur-sm p-8 rounded-3xl shadow-2xl text-center"
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
     >
       <div className="text-4xl mb-4">⏸️</div>
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">Paused</h2>
-      <button
+      <h2 className="text-2xl font-bold mb-4 text-gray-800">หยุดชั่วคราว</h2>
+      <motion.button
         onClick={onResume}
-        className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
+        className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-6 py-3 rounded-2xl font-medium shadow-lg transition-all"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
-        Resume
-      </button>
+        เล่นต่อ
+      </motion.button>
     </motion.div>
   </div>
 );
@@ -251,10 +299,11 @@ const PauseScreen: React.FC<{ onResume: () => void }> = ({ onResume }) => (
 // Main game component
 const BrickBreakerGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(createInitialState());
-  const [keys, setKeys] = useState<{ [key: string]: boolean }>({});
   const [bestScore, setBestScore] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState(false);
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>(0);
+  const lastTouchRef = useRef<{ x: number; time: number } | null>(null);
 
   // Collision detection
   const checkCollision = useCallback((
@@ -277,14 +326,6 @@ const BrickBreakerGame: React.FC = () => {
       }
 
       const newState = { ...prevState };
-      
-      // Move paddle based on keyboard input
-      if (keys['ArrowLeft'] && newState.paddle.x > 0) {
-        newState.paddle.x = Math.max(0, newState.paddle.x - 5);
-      }
-      if (keys['ArrowRight'] && newState.paddle.x < GAME_WIDTH - PADDLE_WIDTH) {
-        newState.paddle.x = Math.min(GAME_WIDTH - PADDLE_WIDTH, newState.paddle.x + 5);
-      }
 
       // Move ball
       newState.ball.x += newState.ballVelocity.x;
@@ -308,15 +349,15 @@ const BrickBreakerGame: React.FC = () => {
 
       if (paddleCollision && newState.ballVelocity.y > 0) {
         newState.ballVelocity.y = -Math.abs(newState.ballVelocity.y);
-        
+
         // Add angle based on paddle hit position
         const hitPos = (newState.ball.x - (newState.paddle.x + PADDLE_WIDTH / 2)) / (PADDLE_WIDTH / 2);
-        const maxAngle = Math.PI / 4; // 45 degrees
+        const maxAngle = Math.PI / 3; // 60 degrees
         const angle = hitPos * maxAngle;
-        const speed = Math.sqrt(newState.ballVelocity.x * newState.ballVelocity.x + newState.ballVelocity.y * newState.ballVelocity.y);
-        
-        newState.ballVelocity.x = Math.sin(angle) * speed;
-        newState.ballVelocity.y = -Math.cos(angle) * speed;
+        const baseSpeed = 3 + newState.level * 0.5;
+
+        newState.ballVelocity.x = Math.sin(angle) * baseSpeed;
+        newState.ballVelocity.y = -Math.cos(angle) * baseSpeed;
       }
 
       // Ball collision with bricks
@@ -330,16 +371,16 @@ const BrickBreakerGame: React.FC = () => {
           if (brickCollision) {
             brick.destroyed = true;
             newState.score += brick.points;
-            
+
             // Determine bounce direction based on collision side
             const ballCenterX = newState.ball.x;
             const ballCenterY = newState.ball.y;
             const brickCenterX = brick.x + BRICK_WIDTH / 2;
             const brickCenterY = brick.y + BRICK_HEIGHT / 2;
-            
+
             const dx = ballCenterX - brickCenterX;
             const dy = ballCenterY - brickCenterY;
-            
+
             if (Math.abs(dx) > Math.abs(dy)) {
               newState.ballVelocity.x = -newState.ballVelocity.x;
             } else {
@@ -362,7 +403,7 @@ const BrickBreakerGame: React.FC = () => {
           newState.gameOver = true;
         } else {
           // Reset ball position
-          newState.ball = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 50 };
+          newState.ball = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 60 };
           newState.ballVelocity = { x: 0, y: 0 };
           newState.gameStarted = false;
         }
@@ -371,10 +412,8 @@ const BrickBreakerGame: React.FC = () => {
       return newState;
     });
 
-    if (!gameState.gameOver && !gameState.gameWon && !gameState.paused && gameState.gameStarted) {
-      animationRef.current = requestAnimationFrame(gameLoop);
-    }
-  }, [keys, checkCollision, gameState.gameOver, gameState.gameWon, gameState.paused, gameState.gameStarted]);
+    animationRef.current = requestAnimationFrame(gameLoop);
+  }, [checkCollision]);
 
   // Start game loop
   useEffect(() => {
@@ -388,87 +427,138 @@ const BrickBreakerGame: React.FC = () => {
     };
   }, [gameLoop, gameState.gameStarted, gameState.gameOver, gameState.gameWon, gameState.paused]);
 
-  // Keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
-        e.preventDefault();
-        setKeys(prev => ({ ...prev, [e.code]: true }));
-      }
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (!gameState.gameStarted && !gameState.gameOver && !gameState.gameWon) {
-          startGame();
-        }
-      }
-    };
+  // Convert screen coordinates to game coordinates
+  const getGameCoordinate = (clientX: number): number => {
+    const rect = gameAreaRef.current?.getBoundingClientRect();
+    if (!rect) return 0;
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
-        e.preventDefault();
-        setKeys(prev => ({ ...prev, [e.code]: false }));
-      }
-    };
+    const x = clientX - rect.left;
+    const scale = GAME_WIDTH / rect.width;
+    return x * scale;
+  };
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [gameState.gameStarted, gameState.gameOver, gameState.gameWon]);
-
-  // Touch controls
+  // Touch controls - แก้ไขให้ทำงานได้ดีขึ้น
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
+    const touch = e.touches[0];
+
     if (!gameState.gameStarted && !gameState.gameOver && !gameState.gameWon) {
       startGame();
       return;
     }
-    
-    const touch = e.touches[0];
-    const rect = gameAreaRef.current?.getBoundingClientRect();
-    if (rect) {
-      const x = touch.clientX - rect.left;
-      const scale = GAME_WIDTH / rect.width;
-      const gameX = x * scale;
-      
-      setGameState(prev => ({
-        ...prev,
-        paddle: { 
-          ...prev.paddle, 
-          x: Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, gameX - PADDLE_WIDTH / 2))
-        }
-      }));
-    }
+
+    setIsDragging(true);
+    const gameX = getGameCoordinate(touch.clientX);
+    lastTouchRef.current = { x: gameX, time: Date.now() };
+
+    setGameState(prev => ({
+      ...prev,
+      paddle: {
+        ...prev.paddle,
+        x: Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, gameX - PADDLE_WIDTH / 2))
+      }
+    }));
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     e.preventDefault();
+    if (!isDragging) return;
+
     const touch = e.touches[0];
-    const rect = gameAreaRef.current?.getBoundingClientRect();
-    if (rect) {
-      const x = touch.clientX - rect.left;
-      const scale = GAME_WIDTH / rect.width;
-      const gameX = x * scale;
-      
+    const gameX = getGameCoordinate(touch.clientX);
+
+    setGameState(prev => ({
+      ...prev,
+      paddle: {
+        ...prev.paddle,
+        x: Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, gameX - PADDLE_WIDTH / 2))
+      }
+    }));
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    lastTouchRef.current = null;
+  };
+
+  // Mouse controls สำหรับ desktop
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!gameState.gameStarted && !gameState.gameOver && !gameState.gameWon) {
+      startGame();
+      return;
+    }
+
+    setIsDragging(true);
+    const gameX = getGameCoordinate(e.clientX);
+
+    setGameState(prev => ({
+      ...prev,
+      paddle: {
+        ...prev.paddle,
+        x: Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, gameX - PADDLE_WIDTH / 2))
+      }
+    }));
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+
+    const gameX = getGameCoordinate(e.clientX);
+
+    setGameState(prev => ({
+      ...prev,
+      paddle: {
+        ...prev.paddle,
+        x: Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, gameX - PADDLE_WIDTH / 2))
+      }
+    }));
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add global mouse event listeners
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+
+      const gameX = getGameCoordinate(e.clientX);
+
       setGameState(prev => ({
         ...prev,
-        paddle: { 
-          ...prev.paddle, 
+        paddle: {
+          ...prev.paddle,
           x: Math.max(0, Math.min(GAME_WIDTH - PADDLE_WIDTH, gameX - PADDLE_WIDTH / 2))
         }
       }));
+    };
+
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleGlobalMouseMove);
+      document.addEventListener('mouseup', handleGlobalMouseUp);
     }
-  };
+
+    return () => {
+      document.removeEventListener('mousemove', handleGlobalMouseMove);
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging]);
 
   // Game controls
   const startGame = () => {
     setGameState(prev => ({
       ...prev,
       gameStarted: true,
-      ballVelocity: { x: 2 + prev.level * 0.3, y: -(2.5 + prev.level * 0.3) }
+      ballVelocity: {
+        x: (Math.random() - 0.5) * 2,
+        y: -(3 + prev.level * 0.5)
+      }
     }));
   };
 
@@ -481,7 +571,7 @@ const BrickBreakerGame: React.FC = () => {
       setBestScore(gameState.score);
     }
     setGameState(createInitialState());
-    setKeys({});
+    setIsDragging(false);
   };
 
   const nextLevel = () => {
@@ -492,40 +582,54 @@ const BrickBreakerGame: React.FC = () => {
       ...createInitialState(prev.level + 1),
       score: prev.score
     }));
-    setKeys({});
+    setIsDragging(false);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <GameStats 
-          score={gameState.score} 
+        <GameStats
+          score={gameState.score}
           lives={gameState.lives}
           level={gameState.level}
         />
-        
+
         {bestScore > 0 && (
-          <div className="text-center bg-white bg-opacity-80 backdrop-blur-sm rounded-lg p-2 mb-4">
-            <div className="text-sm text-gray-600">Best Score</div>
-            <div className="text-lg font-bold text-blue-600">{bestScore}</div>
-          </div>
+          <motion.div
+            className="text-center bg-white/70 backdrop-blur-sm rounded-xl p-3 mb-4 border border-white/30"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="text-sm text-gray-600">🏆 สถิติที่ดีที่สุด</div>
+            <div className="text-xl font-bold text-purple-600">{bestScore.toLocaleString()}</div>
+          </motion.div>
         )}
-        
-        <div 
+
+        <div
           ref={gameAreaRef}
-          className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl mx-auto overflow-hidden shadow-2xl"
+          className="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl mx-auto overflow-hidden shadow-2xl border-4 border-white/20"
           style={{
             width: '100%',
             aspectRatio: `${GAME_WIDTH}/${GAME_HEIGHT}`,
-            maxWidth: '320px'
+            maxWidth: '320px',
+            touchAction: 'none'
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
         >
+          {/* Decorative background pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400" />
+          </div>
+
           {/* Game elements */}
           <Paddle x={gameState.paddle.x} y={gameState.paddle.y} />
           <Ball x={gameState.ball.x} y={gameState.ball.y} />
-          
+
           {/* Bricks */}
           <AnimatePresence>
             {gameState.bricks.map(brick => (
@@ -554,27 +658,39 @@ const BrickBreakerGame: React.FC = () => {
             />
           )}
         </div>
-        
+
         {/* Game Controls */}
-        <div className="flex justify-center gap-4 mt-4">
-          <button
+        <div className="flex justify-center gap-4 mt-6">
+          <motion.button
             onClick={togglePause}
-            className="bg-white bg-opacity-90 backdrop-blur-sm hover:bg-opacity-100 text-gray-700 px-4 py-2 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
+            className="bg-white/80 backdrop-blur-sm hover:bg-white/90 text-gray-700 px-6 py-3 rounded-2xl font-medium shadow-lg transition-all border border-white/30"
             disabled={!gameState.gameStarted || gameState.gameOver || gameState.gameWon}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {gameState.paused ? '▶️' : '⏸️'}
-          </button>
-          <button
+            {gameState.paused ? '▶️ เล่นต่อ' : '⏸️ หยุด'}
+          </motion.button>
+          <motion.button
             onClick={restartGame}
-            className="bg-white bg-opacity-90 backdrop-blur-sm hover:bg-opacity-100 text-gray-700 px-4 py-2 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
+            className="bg-white/80 backdrop-blur-sm hover:bg-white/90 text-gray-700 px-6 py-3 rounded-2xl font-medium shadow-lg transition-all border border-white/30"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
-            🔄
-          </button>
+            🔄 เริ่มใหม่
+          </motion.button>
         </div>
-        
-        <div className="text-center text-gray-500 mt-4 text-sm bg-white bg-opacity-70 backdrop-blur-sm rounded-lg p-2">
-          {!gameState.gameStarted ? 'Tap screen to start' : 'Drag to move paddle'}
-        </div>
+
+        <motion.div
+          className="text-center text-gray-600 mt-4 text-sm bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-white/30"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          {!gameState.gameStarted ?
+            '👆 แตะหน้าจอเพื่อเริ่มเล่น' :
+            '👆 ลากแป้นเพื่อเล่น'
+          }
+        </motion.div>
       </div>
     </div>
   );
