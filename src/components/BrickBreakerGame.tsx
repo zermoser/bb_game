@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Howl } from 'howler';
 
 // Game constants
 const GAME_WIDTH = 320;
@@ -33,11 +34,23 @@ interface Brick {
   points: number;
 }
 
+interface Particle {
+  id: string;
+  x: number;
+  y: number;
+  color: string;
+  size: number;
+  vx: number;
+  vy: number;
+  life: number;
+}
+
 interface GameState {
   paddle: Position;
   ball: Position;
   ballVelocity: Velocity;
   bricks: Brick[];
+  particles: Particle[];
   score: number;
   lives: number;
   gameOver: boolean;
@@ -47,15 +60,15 @@ interface GameState {
   gameStarted: boolean;
 }
 
-// นุ่มนวลสำหรับตา
+// Soft color gradients for bricks
 const BRICK_CONFIGS = [
-  { color: 'bg-gradient-to-r from-rose-300 to-rose-400', points: 50 },
-  { color: 'bg-gradient-to-r from-amber-300 to-amber-400', points: 40 },
-  { color: 'bg-gradient-to-r from-emerald-300 to-emerald-400', points: 30 },
-  { color: 'bg-gradient-to-r from-sky-300 to-sky-400', points: 25 },
-  { color: 'bg-gradient-to-r from-violet-300 to-violet-400', points: 20 },
-  { color: 'bg-gradient-to-r from-pink-300 to-pink-400', points: 15 },
-  { color: 'bg-gradient-to-r from-teal-300 to-teal-400', points: 10 }
+  { color: 'bg-gradient-to-r from-rose-200 to-rose-300', points: 50 },
+  { color: 'bg-gradient-to-r from-amber-200 to-amber-300', points: 40 },
+  { color: 'bg-gradient-to-r from-emerald-200 to-emerald-300', points: 30 },
+  { color: 'bg-gradient-to-r from-sky-200 to-sky-300', points: 25 },
+  { color: 'bg-gradient-to-r from-violet-200 to-violet-300', points: 20 },
+  { color: 'bg-gradient-to-r from-pink-200 to-pink-300', points: 15 },
+  { color: 'bg-gradient-to-r from-teal-200 to-teal-300', points: 10 }
 ];
 
 // Initialize bricks
@@ -86,6 +99,7 @@ const createInitialState = (level: number = 1): GameState => ({
   ball: { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 60 },
   ballVelocity: { x: 0, y: 0 },
   bricks: initializeBricks(),
+  particles: [],
   score: 0,
   lives: 3,
   gameOver: false,
@@ -94,6 +108,17 @@ const createInitialState = (level: number = 1): GameState => ({
   paused: false,
   gameStarted: false
 });
+
+// Sound effects
+const createSound = (src: string) => new Howl({ src: [src], volume: 0.3 });
+const sounds = {
+  paddleHit: createSound('https://assets.mixkit.co/sfx/preview/mixkit-game-ball-tap-2073.mp3'),
+  brickHit: createSound('https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3'),
+  gameOver: createSound('https://assets.mixkit.co/sfx/preview/mixkit-falling-game-over-1942.mp3'),
+  levelComplete: createSound('https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'),
+  lifeLost: createSound('https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3'),
+  start: createSound('https://assets.mixkit.co/sfx/preview/mixkit-game-show-suspense-waiting-667.mp3')
+};
 
 // Individual components
 const Paddle: React.FC<{ x: number; y: number }> = ({ x, y }) => (
@@ -157,6 +182,28 @@ const Brick: React.FC<{ brick: Brick }> = ({ brick }) => {
   );
 };
 
+const Particle: React.FC<{ particle: Particle }> = ({ particle }) => {
+  return (
+    <motion.div
+      className="absolute rounded-full"
+      style={{
+        left: particle.x,
+        top: particle.y,
+        width: particle.size,
+        height: particle.size,
+        background: particle.color,
+        opacity: particle.life
+      }}
+      animate={{ 
+        x: particle.x + particle.vx * 20,
+        y: particle.y + particle.vy * 20,
+        opacity: 0
+      }}
+      transition={{ duration: 0.5 }}
+    />
+  );
+};
+
 const GameStats: React.FC<{
   score: number;
   lives: number;
@@ -173,7 +220,18 @@ const GameStats: React.FC<{
         <div className="text-xs text-gray-600 font-medium">LEVEL</div>
       </div>
       <div>
-        <div className="text-2xl">{'💖'.repeat(lives)}</div>
+        <div className="text-2xl flex justify-center">
+          {Array.from({ length: lives }).map((_, i) => (
+            <motion.span 
+              key={i} 
+              className="text-red-400"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
+            >
+              ❤️
+            </motion.span>
+          ))}
+        </div>
         <div className="text-xs text-gray-600 font-medium">LIVES</div>
       </div>
     </div>
@@ -200,7 +258,7 @@ const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
       <div className="space-y-2 mb-6 text-sm text-gray-600">
         <div className="flex items-center justify-center gap-2">
           <span>📱</span>
-          <span>ลากแป้นเพื่อเล่น</span>
+          <span>ลากแป้นหรือใช้ปุ่มซ้ายขวา</span>
         </div>
         <div className="flex items-center justify-center gap-2">
           <span>🎯</span>
@@ -301,9 +359,11 @@ const BrickBreakerGame: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(createInitialState());
   const [bestScore, setBestScore] = useState<number>(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [keys, setKeys] = useState({ left: false, right: false });
   const gameAreaRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>(0);
   const lastTouchRef = useRef<{ x: number; time: number } | null>(null);
+  const soundsRef = useRef(sounds);
 
   // Collision detection
   const checkCollision = useCallback((
@@ -318,6 +378,46 @@ const BrickBreakerGame: React.FC = () => {
     );
   }, []);
 
+  // Create particles effect
+  const createParticles = useCallback((x: number, y: number, color: string, count: number = 8) => {
+    const newParticles: Particle[] = [];
+    
+    for (let i = 0; i < count; i++) {
+      newParticles.push({
+        id: `${Date.now()}-${i}`,
+        x,
+        y,
+        color,
+        size: Math.random() * 4 + 2,
+        vx: (Math.random() - 0.5) * 4,
+        vy: (Math.random() - 0.5) * 4,
+        life: 1
+      });
+    }
+    
+    return newParticles;
+  }, []);
+
+  // Adjust velocity to maintain consistent speed
+  const adjustVelocity = useCallback((velocity: Velocity): Velocity => {
+    const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
+    const minSpeed = 2.0 + gameState.level * 0.3;
+    const maxSpeed = 5.0;
+    
+    if (speed < minSpeed) {
+      return {
+        x: (velocity.x / speed) * minSpeed,
+        y: (velocity.y / speed) * minSpeed
+      };
+    } else if (speed > maxSpeed) {
+      return {
+        x: (velocity.x / speed) * maxSpeed,
+        y: (velocity.y / speed) * maxSpeed
+      };
+    }
+    return velocity;
+  }, [gameState.level]);
+
   // Game loop
   const gameLoop = useCallback(() => {
     setGameState(prevState => {
@@ -326,6 +426,14 @@ const BrickBreakerGame: React.FC = () => {
       }
 
       const newState = { ...prevState };
+      
+      // Move paddle with keyboard
+      if (keys.left) {
+        newState.paddle.x = Math.max(0, newState.paddle.x - 8);
+      }
+      if (keys.right) {
+        newState.paddle.x = Math.min(GAME_WIDTH - PADDLE_WIDTH, newState.paddle.x + 8);
+      }
 
       // Move ball
       newState.ball.x += newState.ballVelocity.x;
@@ -348,16 +456,28 @@ const BrickBreakerGame: React.FC = () => {
       );
 
       if (paddleCollision && newState.ballVelocity.y > 0) {
+        soundsRef.current.paddleHit.play();
         newState.ballVelocity.y = -Math.abs(newState.ballVelocity.y);
 
         // Add angle based on paddle hit position
         const hitPos = (newState.ball.x - (newState.paddle.x + PADDLE_WIDTH / 2)) / (PADDLE_WIDTH / 2);
         const maxAngle = Math.PI / 3; // 60 degrees
         const angle = hitPos * maxAngle;
-        const baseSpeed = 3 + newState.level * 0.5;
+        const baseSpeed = 1.8 + newState.level * 0.3;
 
         newState.ballVelocity.x = Math.sin(angle) * baseSpeed;
         newState.ballVelocity.y = -Math.cos(angle) * baseSpeed;
+        
+        // Create particles
+        newState.particles = [
+          ...newState.particles,
+          ...createParticles(
+            newState.ball.x, 
+            newState.ball.y, 
+            'bg-gradient-to-r from-blue-400 to-blue-500',
+            6
+          )
+        ];
       }
 
       // Ball collision with bricks
@@ -369,8 +489,20 @@ const BrickBreakerGame: React.FC = () => {
           );
 
           if (brickCollision) {
+            soundsRef.current.brickHit.play();
             brick.destroyed = true;
             newState.score += brick.points;
+
+            // Create particles
+            newState.particles = [
+              ...newState.particles,
+              ...createParticles(
+                brick.x + BRICK_WIDTH / 2, 
+                brick.y + BRICK_HEIGHT / 2, 
+                brick.color,
+                8
+              )
+            ];
 
             // Determine bounce direction based on collision side
             const ballCenterX = newState.ball.x;
@@ -390,17 +522,33 @@ const BrickBreakerGame: React.FC = () => {
         }
       });
 
+      // Update particles
+      newState.particles = newState.particles
+        .map(p => ({
+          ...p,
+          x: p.x + p.vx,
+          y: p.y + p.vy,
+          life: p.life - 0.02
+        }))
+        .filter(p => p.life > 0);
+
+      // Adjust velocity to maintain consistent speed
+      newState.ballVelocity = adjustVelocity(newState.ballVelocity);
+
       // Check win condition
       const remainingBricks = newState.bricks.filter(brick => !brick.destroyed);
-      if (remainingBricks.length === 0) {
+      if (remainingBricks.length === 0 && newState.bricks.length > 0) {
         newState.gameWon = true;
+        soundsRef.current.levelComplete.play();
       }
 
       // Check game over condition
       if (newState.ball.y > GAME_HEIGHT) {
+        soundsRef.current.lifeLost.play();
         newState.lives--;
         if (newState.lives <= 0) {
           newState.gameOver = true;
+          soundsRef.current.gameOver.play();
         } else {
           // Reset ball position
           newState.ball = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - 60 };
@@ -413,7 +561,7 @@ const BrickBreakerGame: React.FC = () => {
     });
 
     animationRef.current = requestAnimationFrame(gameLoop);
-  }, [checkCollision]);
+  }, [checkCollision, createParticles, adjustVelocity, keys]);
 
   // Start game loop
   useEffect(() => {
@@ -427,6 +575,30 @@ const BrickBreakerGame: React.FC = () => {
     };
   }, [gameLoop, gameState.gameStarted, gameState.gameOver, gameState.gameWon, gameState.paused]);
 
+  // Keyboard event listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') setKeys(prev => ({ ...prev, left: true }));
+      if (e.key === 'ArrowRight') setKeys(prev => ({ ...prev, right: true }));
+      if (e.key === 'p' || e.key === ' ') {
+        togglePause();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') setKeys(prev => ({ ...prev, left: false }));
+      if (e.key === 'ArrowRight') setKeys(prev => ({ ...prev, right: false }));
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
   // Convert screen coordinates to game coordinates
   const getGameCoordinate = (clientX: number): number => {
     const rect = gameAreaRef.current?.getBoundingClientRect();
@@ -437,7 +609,7 @@ const BrickBreakerGame: React.FC = () => {
     return x * scale;
   };
 
-  // Touch controls - แก้ไขให้ทำงานได้ดีขึ้น
+  // Touch controls
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     const touch = e.touches[0];
@@ -482,7 +654,7 @@ const BrickBreakerGame: React.FC = () => {
     lastTouchRef.current = null;
   };
 
-  // Mouse controls สำหรับ desktop
+  // Mouse controls for desktop
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!gameState.gameStarted && !gameState.gameOver && !gameState.gameWon) {
       startGame();
@@ -552,12 +724,13 @@ const BrickBreakerGame: React.FC = () => {
 
   // Game controls
   const startGame = () => {
+    soundsRef.current.start.play();
     setGameState(prev => ({
       ...prev,
       gameStarted: true,
       ballVelocity: {
-        x: (Math.random() - 0.5) * 2,
-        y: -(3 + prev.level * 0.5)
+        x: (Math.random() - 0.5) * 1.5,
+        y: -(2 + prev.level * 0.3)
       }
     }));
   };
@@ -586,7 +759,7 @@ const BrickBreakerGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <GameStats
           score={gameState.score}
@@ -629,6 +802,13 @@ const BrickBreakerGame: React.FC = () => {
           {/* Game elements */}
           <Paddle x={gameState.paddle.x} y={gameState.paddle.y} />
           <Ball x={gameState.ball.x} y={gameState.ball.y} />
+
+          {/* Particles */}
+          <AnimatePresence>
+            {gameState.particles.map(particle => (
+              <Particle key={particle.id} particle={particle} />
+            ))}
+          </AnimatePresence>
 
           {/* Bricks */}
           <AnimatePresence>
@@ -688,7 +868,7 @@ const BrickBreakerGame: React.FC = () => {
         >
           {!gameState.gameStarted ?
             '👆 แตะหน้าจอเพื่อเริ่มเล่น' :
-            '👆 ลากแป้นเพื่อเล่น'
+            '👆 ลากแป้นหรือใช้ปุ่มซ้ายขวาเพื่อเล่น'
           }
         </motion.div>
       </div>
