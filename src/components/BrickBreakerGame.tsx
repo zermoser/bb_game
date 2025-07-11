@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Game constants
-const GAME_WIDTH = 400;
-const GAME_HEIGHT = 600;
-const PADDLE_WIDTH = 80;
+const GAME_WIDTH = 320;
+const GAME_HEIGHT = 480;
+const PADDLE_WIDTH = 60;
 const PADDLE_HEIGHT = 8;
-const BALL_SIZE = 12;
-const BRICK_WIDTH = 35;
-const BRICK_HEIGHT = 20;
+const BALL_SIZE = 10;
+const BRICK_WIDTH = 28;
+const BRICK_HEIGHT = 16;
 const BRICK_ROWS = 8;
 const BRICK_COLS = 10;
 const BRICK_PADDING = 2;
@@ -47,16 +47,16 @@ interface GameState {
   gameStarted: boolean;
 }
 
-// Brick colors and points
+// Softer, less harsh colors
 const BRICK_CONFIGS = [
-  { color: 'bg-red-500', points: 50 },
-  { color: 'bg-orange-500', points: 40 },
-  { color: 'bg-yellow-500', points: 30 },
-  { color: 'bg-green-500', points: 20 },
-  { color: 'bg-blue-500', points: 15 },
-  { color: 'bg-indigo-500', points: 15 },
-  { color: 'bg-purple-500', points: 10 },
-  { color: 'bg-pink-500', points: 10 }
+  { color: 'bg-rose-400', points: 50 },
+  { color: 'bg-orange-400', points: 40 },
+  { color: 'bg-amber-400', points: 30 },
+  { color: 'bg-emerald-400', points: 20 },
+  { color: 'bg-sky-400', points: 15 },
+  { color: 'bg-violet-400', points: 15 },
+  { color: 'bg-pink-400', points: 10 },
+  { color: 'bg-teal-400', points: 10 }
 ];
 
 // Initialize bricks
@@ -70,7 +70,7 @@ const initializeBricks = (): Brick[] => {
       bricks.push({
         id: `${row}-${col}`,
         x: startX + col * (BRICK_WIDTH + BRICK_PADDING),
-        y: 60 + row * (BRICK_HEIGHT + BRICK_PADDING),
+        y: 40 + row * (BRICK_HEIGHT + BRICK_PADDING),
         destroyed: false,
         color: config.color,
         points: config.points
@@ -99,25 +99,26 @@ const createInitialState = (level: number = 1): GameState => ({
 // Individual components
 const Paddle: React.FC<{ x: number; y: number }> = ({ x, y }) => (
   <div
-    className="absolute bg-gradient-to-r from-blue-400 to-blue-600 rounded-full shadow-lg"
+    className="absolute bg-white shadow-md"
     style={{
       left: x,
       top: y,
       width: PADDLE_WIDTH,
       height: PADDLE_HEIGHT,
+      borderRadius: '4px',
     }}
   />
 );
 
 const Ball: React.FC<{ x: number; y: number }> = ({ x, y }) => (
   <div
-    className="absolute bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full shadow-lg"
+    className="absolute bg-white shadow-md"
     style={{
       left: x - BALL_SIZE / 2,
       top: y - BALL_SIZE / 2,
       width: BALL_SIZE,
       height: BALL_SIZE,
-      boxShadow: '0 0 10px rgba(255, 255, 0, 0.5)'
+      borderRadius: '50%',
     }}
   />
 );
@@ -127,16 +128,17 @@ const Brick: React.FC<{ brick: Brick }> = ({ brick }) => {
   
   return (
     <motion.div
-      className={`absolute ${brick.color} rounded-sm shadow-md border border-white border-opacity-20`}
+      className={`absolute ${brick.color} shadow-sm`}
       style={{
         left: brick.x,
         top: brick.y,
         width: BRICK_WIDTH,
         height: BRICK_HEIGHT,
+        borderRadius: '3px',
       }}
       initial={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0, opacity: 0, rotate: 180 }}
-      transition={{ duration: 0.3 }}
+      exit={{ scale: 0.8, opacity: 0 }}
+      transition={{ duration: 0.2 }}
     />
   );
 };
@@ -145,48 +147,41 @@ const GameStats: React.FC<{
   score: number; 
   lives: number; 
   level: number; 
-  onPause: () => void; 
-  onRestart: () => void;
-  paused: boolean;
-}> = ({ score, lives, level, onPause, onRestart, paused }) => (
-  <div className="bg-gray-800 text-white p-3 rounded-lg mb-4">
-    <div className="flex justify-between items-center text-sm">
-      <div>Score: <span className="font-bold text-yellow-400">{score}</span></div>
-      <div>Level: <span className="font-bold text-green-400">{level}</span></div>
-      <div>Lives: <span className="font-bold text-red-400">{lives}</span></div>
-    </div>
-    <div className="flex justify-center gap-2 mt-2">
-      <button
-        onClick={onPause}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-      >
-        {paused ? '▶ Resume' : '⏸ Pause'}
-      </button>
-      <button
-        onClick={onRestart}
-        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
-      >
-        🔄 Restart
-      </button>
+}> = ({ score, lives, level }) => (
+  <div className="bg-white bg-opacity-95 backdrop-blur-sm p-4 rounded-xl shadow-lg mb-4">
+    <div className="flex justify-between items-center">
+      <div className="text-center">
+        <div className="text-2xl font-bold text-gray-800">{score}</div>
+        <div className="text-xs text-gray-600">SCORE</div>
+      </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-gray-800">{level}</div>
+        <div className="text-xs text-gray-600">LEVEL</div>
+      </div>
+      <div className="text-center">
+        <div className="text-2xl font-bold text-red-500">{'❤️'.repeat(lives)}</div>
+        <div className="text-xs text-gray-600">LIVES</div>
+      </div>
     </div>
   </div>
 );
 
 const StartScreen: React.FC<{ onStart: () => void }> = ({ onStart }) => (
-  <div className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center z-20">
-    <div className="text-center text-white p-6">
-      <h1 className="text-4xl font-bold mb-4 text-yellow-400">🧱 Brick Breaker</h1>
-      <p className="text-lg mb-6 text-gray-300">Destroy all bricks to win!</p>
-      <div className="text-sm text-gray-400 mb-6 space-y-1">
-        <p>📱 Touch: Drag paddle or tap sides</p>
-        <p>⌨️ Desktop: Arrow keys</p>
-        <p>🎯 Different bricks = Different points</p>
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-20">
+    <div className="text-center p-6">
+      <div className="text-6xl mb-4">🎮</div>
+      <h1 className="text-3xl font-bold mb-4 text-gray-800">Brick Breaker</h1>
+      <p className="text-lg mb-6 text-gray-600">Break all the bricks!</p>
+      <div className="space-y-2 mb-6 text-sm text-gray-500">
+        <p>📱 Drag the paddle to move</p>
+        <p>🎯 Different colors = Different points</p>
+        <p>❤️ You have 3 lives</p>
       </div>
       <button
         onClick={onStart}
-        className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white px-8 py-3 rounded-full text-lg font-bold transition-all transform hover:scale-105"
+        className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-4 rounded-full text-lg font-bold shadow-lg transition-all transform hover:scale-105 active:scale-95"
       >
-        🚀 Start Game
+        Start Game
       </button>
     </div>
   </div>
@@ -198,33 +193,35 @@ const GameOverScreen: React.FC<{
   level: number;
   onRestart: () => void;
   onNextLevel: () => void;
-}> = ({ gameWon, score, level, onRestart, onNextLevel }) => (
-  <div className="absolute inset-0 bg-black bg-opacity-90 flex items-center justify-center z-20">
+}> = ({ gameWon, score, onRestart, onNextLevel }) => (
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-20">
     <motion.div
-      className="bg-white p-6 rounded-xl text-center mx-4 max-w-sm"
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+      className="bg-white p-6 rounded-2xl shadow-xl text-center mx-4 max-w-sm"
+      initial={{ scale: 0.8, opacity: 0, y: 20 }}
+      animate={{ scale: 1, opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="text-6xl mb-4">{gameWon ? '🎉' : '💥'}</div>
-      <h2 className="text-2xl font-bold mb-2 text-gray-800">
-        {gameWon ? 'Level Complete!' : 'Game Over!'}
+      <div className="text-6xl mb-4">{gameWon ? '🎉' : '😢'}</div>
+      <h2 className="text-2xl font-bold mb-4 text-gray-800">
+        {gameWon ? 'Level Complete!' : 'Game Over'}
       </h2>
-      <p className="text-lg mb-1 text-gray-600">Final Score: <span className="font-bold text-yellow-600">{score}</span></p>
-      <p className="text-md mb-4 text-gray-600">Level: {level}</p>
+      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+        <div className="text-2xl font-bold text-blue-600 mb-1">{score}</div>
+        <div className="text-sm text-gray-600">Final Score</div>
+      </div>
       <div className="flex gap-3 justify-center">
         <button
           onClick={onRestart}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
         >
-          🔄 Play Again
+          Play Again
         </button>
         {gameWon && (
           <button
             onClick={onNextLevel}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
           >
-            ➡️ Next Level
+            Next Level
           </button>
         )}
       </div>
@@ -233,19 +230,19 @@ const GameOverScreen: React.FC<{
 );
 
 const PauseScreen: React.FC<{ onResume: () => void }> = ({ onResume }) => (
-  <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center z-10">
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-10">
     <motion.div
-      className="bg-white p-6 rounded-xl text-center"
+      className="bg-white p-6 rounded-2xl shadow-xl text-center"
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
     >
       <div className="text-4xl mb-4">⏸️</div>
-      <h2 className="text-2xl font-bold mb-4 text-gray-800">Game Paused</h2>
+      <h2 className="text-2xl font-bold mb-4 text-gray-800">Paused</h2>
       <button
         onClick={onResume}
-        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+        className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
       >
-        ▶️ Resume
+        Resume
       </button>
     </motion.div>
   </div>
@@ -283,10 +280,10 @@ const BrickBreakerGame: React.FC = () => {
       
       // Move paddle based on keyboard input
       if (keys['ArrowLeft'] && newState.paddle.x > 0) {
-        newState.paddle.x = Math.max(0, newState.paddle.x - 6);
+        newState.paddle.x = Math.max(0, newState.paddle.x - 5);
       }
       if (keys['ArrowRight'] && newState.paddle.x < GAME_WIDTH - PADDLE_WIDTH) {
-        newState.paddle.x = Math.min(GAME_WIDTH - PADDLE_WIDTH, newState.paddle.x + 6);
+        newState.paddle.x = Math.min(GAME_WIDTH - PADDLE_WIDTH, newState.paddle.x + 5);
       }
 
       // Move ball
@@ -314,7 +311,7 @@ const BrickBreakerGame: React.FC = () => {
         
         // Add angle based on paddle hit position
         const hitPos = (newState.ball.x - (newState.paddle.x + PADDLE_WIDTH / 2)) / (PADDLE_WIDTH / 2);
-        const maxAngle = Math.PI / 3; // 60 degrees
+        const maxAngle = Math.PI / 4; // 45 degrees
         const angle = hitPos * maxAngle;
         const speed = Math.sqrt(newState.ballVelocity.x * newState.ballVelocity.x + newState.ballVelocity.y * newState.ballVelocity.y);
         
@@ -466,30 +463,12 @@ const BrickBreakerGame: React.FC = () => {
     }
   };
 
-  // Touch buttons for mobile
-  const handleTouchButton = (direction: 'left' | 'right') => {
-    if (!gameState.gameStarted && !gameState.gameOver && !gameState.gameWon) {
-      startGame();
-      return;
-    }
-    
-    setGameState(prev => ({
-      ...prev,
-      paddle: {
-        ...prev.paddle,
-        x: direction === 'left' 
-          ? Math.max(0, prev.paddle.x - 30)
-          : Math.min(GAME_WIDTH - PADDLE_WIDTH, prev.paddle.x + 30)
-      }
-    }));
-  };
-
   // Game controls
   const startGame = () => {
     setGameState(prev => ({
       ...prev,
       gameStarted: true,
-      ballVelocity: { x: 2 + prev.level * 0.5, y: -(3 + prev.level * 0.5) }
+      ballVelocity: { x: 2 + prev.level * 0.3, y: -(2.5 + prev.level * 0.3) }
     }));
   };
 
@@ -517,30 +496,28 @@ const BrickBreakerGame: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-50 to-pink-100 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-sm">
         <GameStats 
           score={gameState.score} 
           lives={gameState.lives}
           level={gameState.level}
-          onPause={togglePause}
-          onRestart={restartGame} 
-          paused={gameState.paused}
         />
         
         {bestScore > 0 && (
-          <div className="text-center text-yellow-400 mb-4 text-sm">
-            🏆 Best Score: {bestScore}
+          <div className="text-center bg-white bg-opacity-80 backdrop-blur-sm rounded-lg p-2 mb-4">
+            <div className="text-sm text-gray-600">Best Score</div>
+            <div className="text-lg font-bold text-blue-600">{bestScore}</div>
           </div>
         )}
         
         <div 
           ref={gameAreaRef}
-          className="relative bg-black border-2 border-gray-600 rounded-lg mx-auto overflow-hidden select-none"
+          className="relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl mx-auto overflow-hidden shadow-2xl"
           style={{
             width: '100%',
             aspectRatio: `${GAME_WIDTH}/${GAME_HEIGHT}`,
-            maxWidth: '400px'
+            maxWidth: '320px'
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -578,24 +555,25 @@ const BrickBreakerGame: React.FC = () => {
           )}
         </div>
         
-        {/* Mobile touch controls */}
-        <div className="flex justify-center gap-4 mt-4 md:hidden">
+        {/* Game Controls */}
+        <div className="flex justify-center gap-4 mt-4">
           <button
-            onTouchStart={() => handleTouchButton('left')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-bold text-lg select-none"
+            onClick={togglePause}
+            className="bg-white bg-opacity-90 backdrop-blur-sm hover:bg-opacity-100 text-gray-700 px-4 py-2 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
+            disabled={!gameState.gameStarted || gameState.gameOver || gameState.gameWon}
           >
-            ⬅️
+            {gameState.paused ? '▶️' : '⏸️'}
           </button>
           <button
-            onTouchStart={() => handleTouchButton('right')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-bold text-lg select-none"
+            onClick={restartGame}
+            className="bg-white bg-opacity-90 backdrop-blur-sm hover:bg-opacity-100 text-gray-700 px-4 py-2 rounded-full font-medium shadow-md transition-all transform hover:scale-105 active:scale-95"
           >
-            ➡️
+            🔄
           </button>
         </div>
         
-        <div className="text-center text-gray-400 mt-4 text-xs">
-          {!gameState.gameStarted ? 'Tap to start!' : 'Drag paddle or use buttons'}
+        <div className="text-center text-gray-500 mt-4 text-sm bg-white bg-opacity-70 backdrop-blur-sm rounded-lg p-2">
+          {!gameState.gameStarted ? 'Tap screen to start' : 'Drag to move paddle'}
         </div>
       </div>
     </div>
